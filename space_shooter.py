@@ -42,6 +42,9 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(player_img, (50, 38))
         self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
+        self.radius = int(self.rect.width * 0.8 / 2)
+        # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
+        self.rect = self.image.get_rect()
         self.rect.centerx = WIDTH / 2
         self.rect.bottom = HEIGHT - 10
         self.speedx = 0
@@ -71,6 +74,8 @@ class Mob(pygame.sprite.Sprite):
         self.image = meteor_img
         self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
+        self.radius = int(self.rect.width * 0.9 / 2)
+        # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
         self.rect.x = random.randrange(0, WIDTH - self.rect.width)
         self.rect.y = random.randrange(-100, -40)
         self.speedy = random.randrange(1, 8)
@@ -126,10 +131,10 @@ running = True
 
 while running:
     # keep loop running at the right speed
-    # clock.tick(FPS)
-    # process input (events)
+    clock.tick(FPS)
+    # process input (events loop)
     for event in pygame.event.get():
-        # check window close
+        # check if window close
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
@@ -147,7 +152,8 @@ while running:
         mobs.add(m)
 
     # check to see if a mob hit a player
-    hits = pygame.sprite.spritecollide(player, mobs, False)
+    # by default pygame uses a rectanle collision - was reset to circle collision
+    hits = pygame.sprite.spritecollide(player, mobs, False, pygame.sprite.collide_circle)
     if hits:
         running = False
         print('Game Over')
