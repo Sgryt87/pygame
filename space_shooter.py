@@ -30,10 +30,22 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('The Game')
 clock = pygame.time.Clock()
 
-
 # set up assets folders
 # game_folder = os.path.dirname(__file__)
 # img_folder = os.path.join(game_folder, 'img')
+# # # # # # # # # # # # # # # # # # # # # # #
+
+
+font_name = pygame.font.match_font('arial')
+
+
+def draw_text(surf, text, size, x, y):
+    font = pygame.font.Font(font_name, size)
+    text_surface = font.render(text, True, WHITE)
+    text_rect = text_surface.get_rect()
+    text_rect.midtop = (x, y)
+    # display (blit)
+    surf.blit(text_surface, text_rect)
 
 
 class Player(pygame.sprite.Sprite):
@@ -136,10 +148,22 @@ background_rect = background.get_rect()
 # player
 player_img = pygame.image.load(path.join(img_dir, 'player.png')).convert()
 meteor_img = pygame.image.load(path.join(img_dir, 'meteorSmall.png')).convert()
-bullet_img = pygame.image.load(path.join(img_dir, 'laserRed.png')).convert()
+bullet_img = pygame.image.load(path.join(img_dir, 'laserGreen08.png')).convert()
 meteor_images = []
 
-meteor_list = ['meteorBig.png', 'meteorSmall.png']
+meteor_list = [
+    'meteorBrown_big1.png',
+    'meteorBrown_big2.png',
+    'meteorBrown_big3.png',
+    'meteorBrown_big4.png',
+    'meteorBrown_med1.png',
+    'meteorBrown_med3.png',
+    'meteorBrown_small1.png',
+    'meteorBrown_small2.png',
+    'meteorBrown_tiny1.png',
+    'meteorBrown_tiny2.png',
+    'meteorSmall.png'
+]
 
 for img in meteor_list:
     meteor_images.append(pygame.image.load(path.join(img_dir, img)).convert())
@@ -154,7 +178,7 @@ for i in range(8):
     m = Mob()
     all_sprites.add(m)
     mobs.add(m)
-
+score = 0
 # Game Loop
 running = True
 
@@ -176,6 +200,7 @@ while running:
     # check if the bullet hits a mob
     hits = pygame.sprite.groupcollide(mobs, bullets, True, True)
     for hit in hits:
+        score += 50 - hit.radius
         m = Mob()
         all_sprites.add(m)
         mobs.add(m)
@@ -192,6 +217,7 @@ while running:
     screen.fill(BLACK)
     screen.blit(background, background_rect)
     all_sprites.draw(screen)
+    draw_text(screen, str(score), 18, WIDTH / 2, 10)
     pygame.display.flip()
 
 pygame, quit()
