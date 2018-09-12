@@ -71,17 +71,39 @@ class Player(pygame.sprite.Sprite):
 class Mob(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = meteor_img
-        self.image.set_colorkey(BLACK)
+        # to prevent pixels distorsion instantiating image from image
+        # self.image_orig = meteor_img
+        self.image_orig = random.choice(meteor_images)
+        self.image_orig.set_colorkey(BLACK)
+        self.image = self.image_orig
         self.rect = self.image.get_rect()
         self.radius = int(self.rect.width * 0.9 / 2)
         # pygame.draw.circle(self.image, RED, self.rect.center, self.radius)
         self.rect.x = random.randrange(0, WIDTH - self.rect.width)
-        self.rect.y = random.randrange(-100, -40)
+        self.rect.y = random.randrange(-150, -100)
         self.speedy = random.randrange(1, 8)
         self.speedx = random.randrange(-3, 3)
+        # mons rotation
+        self.rot = 0
+        self.rot_speed = random.randrange(-8, 8)
+        self.last_update = pygame.time.get_ticks()
+
+    def rotate(self):
+        # determing now time - very last time (tick) update
+        now = pygame.time.get_ticks()
+        if now - self.last_update > 50:
+            self.last_update = now
+            # prevent rorating over 360
+            self.rot = (self.rot + self.rot_speed) % 360
+            new_image = pygame.transform.rotate(self.image_orig, self.rot)
+            # keep the rotation centered
+            old_center = self.rect.center
+            self.image = new_image
+            self.rect = self.image.get_rect()
+            self.rect.center = old_center
 
     def update(self):
+        self.rotate()
         self.rect.x += self.speedx
         self.rect.y += self.speedy
         if self.rect.top > HEIGHT + 10 or self.rect.left < -20 or self.rect.right > WIDTH + 20:
@@ -115,6 +137,13 @@ background_rect = background.get_rect()
 player_img = pygame.image.load(path.join(img_dir, 'player.png')).convert()
 meteor_img = pygame.image.load(path.join(img_dir, 'meteorSmall.png')).convert()
 bullet_img = pygame.image.load(path.join(img_dir, 'laserRed.png')).convert()
+meteor_images = []
+
+meteor_list = ['meteorBig.png', 'meteorSmall.png']
+
+for img in meteor_list:
+    meteor_images.append(pygame.image.load(path.join(img_dir, img)).convert())
+
 # all sprites
 all_sprites = pygame.sprite.Group()
 player = Player()
