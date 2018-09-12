@@ -1,4 +1,7 @@
-# Pygame template
+################################################################################
+# Frozen Jam by tgfcoder <https://twitter.com/tgfcoder> licensed under CC-BY-3 #
+# Art from Kenney.nl                                                           #
+################################################################################
 
 import pygame
 import random
@@ -6,6 +9,7 @@ from os import path
 
 ##Conts
 img_dir = path.join(path.dirname(__file__), 'img')
+snd_dir = path.join(path.dirname(__file__), 'sound')
 
 # screen
 WIDTH = 480
@@ -21,7 +25,6 @@ YELLOW = (255, 255, 0)
 
 # game init - ready
 pygame.init()
-
 # sound init
 pygame.mixer.init()
 
@@ -65,6 +68,7 @@ class Player(pygame.sprite.Sprite):
         bullet = Bullet(self.rect.centerx, self.rect.top)
         all_sprites.add(bullet)
         bullets.add(bullet)
+        shoot_snd.play()
 
     def update(self):
         self.speedx = 0
@@ -168,6 +172,13 @@ meteor_list = [
 for img in meteor_list:
     meteor_images.append(pygame.image.load(path.join(img_dir, img)).convert())
 
+## game sound
+shoot_snd = pygame.mixer.Sound(path.join(snd_dir, 'pew.wav'))
+explosion_sound = []
+for snd in ['expl3.wav', 'expl6.wav']:
+    explosion_sound.append(pygame.mixer.Sound(path.join(snd_dir, snd)))
+pygame.mixer.music.load(path.join(snd_dir, 'tgfcoder-FrozenJam-SeamlessLoop.ogg'))
+pygame.mixer.music.set_volume(0.4)
 # all sprites
 all_sprites = pygame.sprite.Group()
 player = Player()
@@ -178,10 +189,13 @@ for i in range(8):
     m = Mob()
     all_sprites.add(m)
     mobs.add(m)
+
 score = 0
+# loop when it reaches the end
+pygame.mixer.music.play(loops=-1)
+
 # Game Loop
 running = True
-
 while running:
     # keep loop running at the right speed
     clock.tick(FPS)
@@ -201,6 +215,8 @@ while running:
     hits = pygame.sprite.groupcollide(mobs, bullets, True, True)
     for hit in hits:
         score += 50 - hit.radius
+        # random sound
+        random.choice(explosion_sound).play()
         m = Mob()
         all_sprites.add(m)
         mobs.add(m)
