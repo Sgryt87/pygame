@@ -51,6 +51,24 @@ def draw_text(surf, text, size, x, y):
     surf.blit(text_surface, text_rect)
 
 
+def newmob():
+    m = Mob()
+    all_sprites.add(m)
+    mobs.add(m)
+
+
+def draw_shield_bar(srfc, x, y, prct):
+    if prct < 0:
+        pct = 0
+    BAR_LENGTH = 100
+    BAR_HEIGHT = 10
+    fill = (prct / 100) * BAR_LENGTH
+    outline_rect = pygame.Rect(x, y, BAR_LENGTH, BAR_HEIGHT)
+    fill_rect = pygame.Rect(x, y, fill, BAR_HEIGHT)
+    pygame.draw.rect(srfc, GREEN, fill_rect)
+    pygame.draw.rect(srfc, WHITE, outline_rect, 2)
+
+
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
@@ -63,6 +81,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.centerx = WIDTH / 2
         self.rect.bottom = HEIGHT - 10
         self.speedx = 0
+        self.shield = 100
 
     def shoot(self):
         bullet = Bullet(self.rect.centerx, self.rect.top)
@@ -186,9 +205,7 @@ mobs = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
 all_sprites.add(player)
 for i in range(8):
-    m = Mob()
-    all_sprites.add(m)
-    mobs.add(m)
+    newmob()
 
 score = 0
 # loop when it reaches the end
@@ -217,16 +234,17 @@ while running:
         score += 50 - hit.radius
         # random sound
         random.choice(explosion_sound).play()
-        m = Mob()
-        all_sprites.add(m)
-        mobs.add(m)
+        newmob()
 
     # check to see if a mob hit a player
-    # by default pygame uses a rectanle collision - was reset to circle collision
-    hits = pygame.sprite.spritecollide(player, mobs, False, pygame.sprite.collide_circle)
-    if hits:
-        running = False
-        print('Game Over')
+    # by default pygame uses a rectangle collision - was reset to circle collision
+    hits = pygame.sprite.spritecollide(player, mobs, True, pygame.sprite.collide_circle)
+    for hit in hits:
+        player.shield -= hit.radius * 2
+        newmob()
+        if player.shield <= 0:
+            running = False
+            print('Game Over')
 
     ## draw/render
     # after  drawing everything, flip the display (when back end rendering is done, return a final view
@@ -234,6 +252,7 @@ while running:
     screen.blit(background, background_rect)
     all_sprites.draw(screen)
     draw_text(screen, str(score), 18, WIDTH / 2, 10)
+    draw_shield_bar(screen, 5, 5, player.shield)
     pygame.display.flip()
 
 pygame, quit()
