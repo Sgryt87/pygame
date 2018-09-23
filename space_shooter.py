@@ -14,6 +14,7 @@ snd_dir = path.join(path.dirname(__file__), 'sound')
 # screen
 WIDTH = 480
 HEIGHT = 600
+POWERUP_TIME = 5000
 FPS = 60
 # colors
 WHITE = (255, 255, 255)
@@ -89,17 +90,36 @@ class Player(pygame.sprite.Sprite):
         self.lives = 3
         self.hidden = False
         self.hide_timer = pygame.time.get_ticks()
+        self.power = 1
+        self.power_time = pygame.time.get_ticks()
+
+    def powerup(self):
+        self.power += 1
+        self.power_time = pygame.time.get_ticks()
 
     def shoot(self):
         now = pygame.time.get_ticks()
         if now - self.last_shoot > self.shoot_delay:
             self.last_shoot = now
-            bullet = Bullet(self.rect.centerx, self.rect.top)
-            all_sprites.add(bullet)
-            bullets.add(bullet)
-            shoot_snd.play()
+            if self.power == 1:
+                bullet = Bullet(self.rect.centerx, self.rect.top)
+                all_sprites.add(bullet)
+                bullets.add(bullet)
+                shoot_snd.play()
+            if self.power >= 2:
+                bullet1 = Bullet(self.rect.left, self.rect.centery)
+                bullet2 = Bullet(self.rect.right, self.rect.centery)
+                all_sprites.add(bullet1)
+                all_sprites.add(bullet2)
+                bullets.add(bullet1)
+                bullets.add(bullet2)
+                shoot_snd.play()
 
     def update(self):
+        # timeout for powerups
+        if self.power >= 2 and pygame.time.get_ticks() - self.power_time > POWERUP_TIME:
+            self.power -= 1
+            self.power_time = pygame.time.get_ticks()
         # unhide if hidden
         if self.hidden and pygame.time.get_ticks() - self.hide_timer > 1000:
             self.hidden = False
@@ -125,6 +145,22 @@ class Player(pygame.sprite.Sprite):
         self.hidden = True
         self.hide_timer = pygame.time.get_ticks()
         self.rect.center = (WIDTH / 2, HEIGHT + 200)
+
+
+def show_gameover_screen():
+    screen.blit(background, background_rect)
+    draw_text(screen, 'Space Shooter', 64, WIDTH / 2, HEIGHT / 4)
+    draw_text(screen, 'Arrow keys to move, Space to fire', 22, WIDTH / 2, HEIGHT / 2)
+    draw_text(screen, 'Press a key to begin', 18, WIDTH / 2, HEIGHT * 3 / 4)
+    pygame.display.flip()
+    waiting = True
+    while waiting:
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.KEYUP:
+                waiting = False
 
 
 class Mob(pygame.sprite.Sprite):
@@ -185,6 +221,23 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.y += self.speedy
         # remove if out of the screen
         if self.rect.bottom < 0:
+            self.kill()
+
+
+class Pow(pygame.sprite.Sprite):
+    def __init__(self, center):
+        pygame.sprite.Sprite.__init__(self)
+        self.type = random.choice(['shield', 'gun'])
+        self.image = powerup_images[self.type]
+        self.image.set_colorkey(BLACK)
+        self.rect = self.image.get_rect()
+        self.rect.center = center
+        self.speedy = 4
+
+    def update(self):
+        self.rect.y += self.speedy
+        # remove if out of the screen
+        if self.rect.top > HEIGHT:
             self.kill()
 
 
@@ -259,30 +312,43 @@ for i in range(9):
     img.set_colorkey(BLACK)
     explosion_animation['player'].append(img)
 
+powerup_images = {}
+powerup_images['shield'] = pygame.image.load(path.join(img_dir, 'shield_gold.png'))
+powerup_images['gun'] = pygame.image.load(path.join(img_dir, 'bolt_gold.png'))
+
 ## game sound
 shoot_snd = pygame.mixer.Sound(path.join(snd_dir, 'pew.wav'))
+shield_snd = pygame.mixer.Sound(path.join(snd_dir, 'pow4.wav'))
+pow_snd = pygame.mixer.Sound(path.join(snd_dir, 'pow5.wav'))
 explosion_sound = []
 for snd in ['expl3.wav', 'expl6.wav']:
     explosion_sound.append(pygame.mixer.Sound(path.join(snd_dir, snd)))
 player_die_sound = pygame.mixer.Sound(path.join(snd_dir, 'rumble1.ogg'))
 pygame.mixer.music.load(path.join(snd_dir, 'tgfcoder-FrozenJam-SeamlessLoop.ogg'))
-pygame.mixer.music.set_volume(0.4)
-# all sprites
-all_sprites = pygame.sprite.Group()
-player = Player()
-mobs = pygame.sprite.Group()
-bullets = pygame.sprite.Group()
-all_sprites.add(player)
-for i in range(8):
-    newmob()
+pygame.mixer.music.set_volume(0.03)
 
-score = 0
 # loop when it reaches the end
 pygame.mixer.music.play(loops=-1)
 
 # Game Loop
+game_over = True
+
 running = True
 while running:
+    if game_over:
+        show_gameover_screen()
+        game_over = False
+        # all sprites
+        all_sprites = pygame.sprite.Group()
+        player = Player()
+        mobs = pygame.sprite.Group()
+        bullets = pygame.sprite.Group()
+        powerups = pygame.sprite.Group()
+        all_sprites.add(player)
+        for i in range(8):
+            newmob()
+        score = 0
+
     # keep loop running at the right speed
     clock.tick(FPS)
     # process input (events loop)
@@ -302,6 +368,10 @@ while running:
         random.choice(explosion_sound).play()
         expl = Explosion(hit.rect.center, 'lg')
         all_sprites.add(expl)
+        if random.random() > 0.9:
+            pow = Pow(hit.rect.center)
+            all_sprites.add(pow)
+            powerups.add(pow)
         newmob()
 
     # check to see if a mob hit a player
@@ -322,10 +392,21 @@ while running:
             player.shield = 100
             print('LIVES', player.lives)
             print('EXPl', death_explosion.alive())
-            # if player died && explosion completed
-            if player.lives == 0 and not death_explosion.alive():
-                running = False
-                print('Game Over')
+    # check if the player hit a powerup
+    hits = pygame.sprite.spritecollide(player, powerups, True)
+    for hit in hits:
+        if hit.type == 'shield':
+            player.shield += random.randrange(10, 30)
+            shield_snd.play()
+            if player.shield >= 100:
+                player.shield = 100
+        if hit.type == 'gun':
+            player.powerup()
+            pow_snd.play()
+    # if player died && explosion completed
+    if player.lives == 0 and not death_explosion.alive():
+        game_over = True
+        print('Game Over')
 
     # # draw/render
     # after  drawing everything, flip the display (when back end rendering is done, return a final view
